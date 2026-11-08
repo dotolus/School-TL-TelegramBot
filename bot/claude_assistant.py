@@ -45,10 +45,17 @@ DECLINE_EDIT_TOOL = {
 }
 
 
+class ClassificationError(Exception):
+    pass
+
+
 @dataclass
 class ClassificationResult:
     kind: Literal["query", "propose_new_item", "decline_edit"]
     item: dict | None = None
+
+
+_REQUIRED_NEW_ITEM_FIELDS = ("type", "m", "y", "title", "short", "full")
 
 
 def _classification_system_prompt(today: date) -> str:
@@ -73,10 +80,15 @@ async def classify_message(
         tools=[QUERY_TIMELINE_TOOL, PROPOSE_NEW_ITEM_TOOL, DECLINE_EDIT_TOOL],
         tool_choice={"type": "any"},
     )
-    tool_use = next(block for block in response.content if block.type == "tool_use")
+    tool_use = next((block for block in response.content if block.type == "tool_use"), None)
+    if tool_use is None:
+        raise ClassificationError("Claude did not call any of the expected tools")
     if tool_use.name == "query_timeline":
         return ClassificationResult(kind="query")
     if tool_use.name == "propose_new_item":
+        missing = [field for field in _REQUIRED_NEW_ITEM_FIELDS if field not in tool_use.input]
+        if missing:
+            raise ClassificationError(f"propose_new_item is missing required field(s): {missing}")
         return ClassificationResult(kind="propose_new_item", item=tool_use.input)
     return ClassificationResult(kind="decline_edit")
 

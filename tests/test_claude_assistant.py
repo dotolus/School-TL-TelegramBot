@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from bot.claude_assistant import ClassificationResult, answer_query, classify_message
+from bot.claude_assistant import ClassificationError, ClassificationResult, answer_query, classify_message
 
 
 def make_fake_client(tool_name, tool_input):
@@ -46,6 +46,24 @@ async def test_classify_message_returns_decline_edit_for_an_edit_request():
     client = make_fake_client(tool_name="decline_edit_request", tool_input={})
     result = await classify_message(client, "claude-sonnet-5-5", "תזיז את המבחן לדצמבר", date(2026, 11, 8))
     assert result == ClassificationResult(kind="decline_edit")
+
+
+@pytest.mark.asyncio
+async def test_classify_message_raises_classification_error_when_no_tool_use_returned():
+    client = Mock()
+    client.messages.create = AsyncMock(
+        return_value=types.SimpleNamespace(content=[types.SimpleNamespace(type="text", text="oops")])
+    )
+    with pytest.raises(ClassificationError):
+        await classify_message(client, "claude-sonnet-5-5", "מה יש השבוע?", date(2026, 11, 8))
+
+
+@pytest.mark.asyncio
+async def test_classify_message_raises_classification_error_when_propose_new_item_missing_a_required_field():
+    incomplete = {"type": "test", "m": 11, "y": 2026, "title": "מבחן"}  # missing short/full
+    client = make_fake_client(tool_name="propose_new_item", tool_input=incomplete)
+    with pytest.raises(ClassificationError):
+        await classify_message(client, "claude-sonnet-5-5", "תוסיף מבחן", date(2026, 11, 8))
 
 
 def make_fake_text_client(text):

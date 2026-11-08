@@ -2,6 +2,7 @@ import os
 
 import anthropic
 import httpx
+from dotenv import load_dotenv
 
 from bot.config import load_config
 from bot.pending import PendingProposals
@@ -10,6 +11,7 @@ from bot.telegram_bot import build_application
 
 
 def main() -> None:
+    load_dotenv()
     config = load_config(os.environ)
 
     http_client = httpx.AsyncClient()

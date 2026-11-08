@@ -4,17 +4,34 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-`main` has no application source yet — git tracks only `README.md`. The other root files (`devops-guidelines.md`, `user-available-skills.md`, `skills-lock.json`, `initial-project-setup.html`, `.mcp.json`) are governance/tooling, not app code. The `accounts/`, `config/`, `core/`, and `delivery/` directories at the repo root contain **only stray `__pycache__` files with no matching `.py` sources** — leftover compiled artifacts from elsewhere, not a working app on this branch. Don't mistake their presence for real code.
+A Python Telegram bot (package: `bot/`) that answers free-form Hebrew questions about the School-TL class timeline and lets the owner create new timeline items from free-form Hebrew, confirmed before any write. Design: `docs/superpowers/specs/2026-11-08-telegram-bot-design.md`. Implementation plan and task-by-task record: `docs/superpowers/plans/2026-11-08-telegram-bot.md`.
 
-Stated purpose (per the user, 2026-11-08): a Telegram bot that fetches information and updates https://reutl.vercel.app/reut/2026-2027/e4/. No tech stack, dependencies, or bot code exist yet for that purpose — don't guess at a stack nobody picked.
+The `accounts/`, `config/`, `core/`, `delivery/` directories (plus `.venv/`) at the repo root are unrelated leftovers (stray `__pycache__`/a Django venv from a different, sibling project) — not part of this bot. Don't mistake their presence for real code belonging here.
 
-**Divergent work-in-progress to be aware of:** the git worktree at `.claude/worktrees/survey-pipeline-task8/` (branch `worktree-survey-pipeline-task8`) holds a separate, already-substantial Django implementation — a multi-tenant "weekly school atmosphere survey" platform (roster import, anonymized per-pupil survey tokens, SMS/email delivery via a pluggable gateway). It has no Telegram or reutl.vercel.app integration, and its own CLAUDE.md (in that directory) describes its architecture. The two directions don't match — confirm with the user which product this repo is actually building before extending either one; don't assume the worktree's survey platform is secretly "the same project" as the Telegram bot.
+**Resolved:** an earlier divergent exploration (a Django "school atmosphere survey" platform in a separate sibling repo/worktree) was found and explicitly rejected by the user ("there is no need for a survey") — not relevant to this bot.
 
 An MCP server, `codebase-memory-mcp`, is configured in `.mcp.json` at the repo root.
 
-When real application code lands on `main`, update this file with:
-- Build, lint, and test commands (including how to run a single test)
-- High-level architecture and structure notes that aren't obvious from browsing individual files
+## Commands
+
+First time: `python -m venv .venv-bot` (3.11+; this project was developed against 3.12 — on Windows, if the default `python` resolves to a newer interpreter whose async ecosystem libraries lag behind, use `py -3.12 -m venv .venv-bot` instead), then `.venv-bot/Scripts/python.exe -m pip install -r requirements-dev.txt` (Windows; `.venv-bot/bin/python` on macOS/Linux).
+
+- Run the full test suite: `.venv-bot/Scripts/python.exe -m pytest -v`
+- Run one file: `.venv-bot/Scripts/python.exe -m pytest tests/test_school_tl_client.py -v`
+- Run one test: `.venv-bot/Scripts/python.exe -m pytest tests/test_school_tl_client.py -v -k test_get_timeline_returns_items`
+- Run the bot: copy `.env.example` to `.env`, fill in the secrets, then `.venv-bot/Scripts/python.exe -m bot.main` (long-polling; no webhook, no public endpoint needed).
+- No linter is configured yet — the pre-commit lint hook (`.claude/settings.json`) currently no-ops for this stack.
+
+## Architecture
+
+- `bot/config.py` — `load_config(env)` reads all required settings (Telegram token, Anthropic key, School-TL base URL/dataset/admin password, the Telegram user allow-list) from environment variables into a `Config`.
+- `bot/school_tl_client.py` — `SchoolTLClient` talks to School-TL's real API: `GET .../timeline` to read, `POST .../timeline/items` to create (never edit/delete — out of scope, see the design doc's non-goals). On a `401`, it logs in once (`POST /api/auth/login`, shared admin password) and retries once, relying on `httpx`'s own cookie jar for the session.
+- `bot/claude_assistant.py` — the only place that talks to the Claude API. `classify_message` uses tool-use to classify an incoming Hebrew message as a query, a new-item proposal (with extracted fields), or a declined edit request. `answer_query` composes the Hebrew answer to a query from the live timeline data.
+- `bot/formatting.py` / `bot/pending.py` — `format_item_summary` renders the Hebrew confirmation text for a proposed item; `PendingProposals` is the per-chat in-memory store between "here's what I understood" and the user tapping confirm/cancel.
+- `bot/telegram_bot.py` — `handle_text_message` and `handle_confirmation_callback` wire the above together; collaborators are read from `context.bot_data` (not imported directly) so handlers stay unit-testable without a live Telegram connection. `build_application` assembles the real `telegram.ext.Application`.
+- `bot/main.py` — the only entrypoint; constructs real clients from `Config` and calls `run_polling()`.
+
+Every write to School-TL is preceded by an explicit user confirmation — there is no code path that calls `create_item` without it. See the design doc for the full rationale, including why editing existing items isn't supported yet.
 
 ## Commit messages
 

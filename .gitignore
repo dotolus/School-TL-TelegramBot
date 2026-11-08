@@ -4,3 +4,4 @@
 .venv-bot/
 __pycache__/
 .superpowers/sdd/
+.env

@@ -1,0 +1,18 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(git commit*)",
+            "command": "cmd=\"\"\nif [ -f package.json ] && grep -q '\"lint\"[[:space:]]*:' package.json; then cmd=\"npm run lint\"\nelif [ -f Makefile ] && grep -qE '^lint:' Makefile; then cmd=\"make lint\"\nelif [ -f pyproject.toml ] && command -v ruff >/dev/null 2>&1; then cmd=\"ruff check .\"\nelif [ -f setup.cfg ] && command -v flake8 >/dev/null 2>&1; then cmd=\"flake8 .\"\nelif [ -f .golangci.yml ] && command -v golangci-lint >/dev/null 2>&1; then cmd=\"golangci-lint run\"\nfi\nif [ -z \"$cmd\" ]; then echo \"No linter is configured for this project yet (CLAUDE.md says the tech stack hasn't been decided) - commit allowed without lint checks. Once a language/tooling is chosen, add a lint script/config and this hook will start enforcing it automatically.\" >&2; exit 0; fi\necho \"Running lint check: $cmd\" >&2\nif ! eval \"$cmd\"; then echo \"Lint failed - fix the issues above before committing.\" >&2; exit 2; fi\nexit 0",
+            "statusMessage": "Linting before commit...",
+            "timeout": 120
+          }
+        ]
+      }
+    ]
+  }
+}

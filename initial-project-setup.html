@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Project Setup Log — School-TL-TelegramBot</title>
+<meta name="description" content="A running record of the decisions made while scaffolding the SchoolAtmosphere repository, and the ones still open." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink: #0b0e14;
+    --ink-raised: #141a24;
+    --ink-raised-2: #0f141d;
+    --hairline: #26303f;
+    --text: #e9ecf2;
+    --text-dim: #a7afc2;
+    --brass: #c9a227;
+    --brass-soft: rgba(201, 162, 39, 0.14);
+    --rust: #c97a4a;
+    --rust-soft: rgba(201, 122, 74, 0.12);
+    --font-body: "IBM Plex Sans", system-ui, -apple-system, Segoe UI, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { color-scheme: dark; }
+
+  body {
+    margin: 0;
+    background: var(--ink);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--brass); text-decoration-color: rgba(201, 162, 39, 0.4); text-underline-offset: 3px; }
+  a:hover { text-decoration-color: var(--brass); }
+
+  :focus-visible {
+    outline: 2px solid var(--brass);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  .wrap {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 56px 24px 96px;
+  }
+
+  /* ---------- header ---------- */
+
+  header.page-head h1 {
+    font-size: clamp(1.7rem, 1.4rem + 1.2vw, 2.25rem);
+    font-weight: 700;
+    margin: 0 0 10px;
+    letter-spacing: -0.01em;
+  }
+
+  header.page-head p.lede {
+    margin: 0 0 32px;
+    color: var(--text-dim);
+    font-size: 1.05rem;
+    max-width: 58ch;
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--hairline);
+    border: 1px solid var(--hairline);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 48px;
+  }
+
+  .stat {
+    background: var(--ink-raised);
+    padding: 16px 18px;
+  }
+
+  .stat .label {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    margin: 0 0 6px;
+  }
+
+  .stat .value {
+    font-family: var(--font-mono);
+    font-size: 1.05rem;
+    font-weight: 500;
+    color: var(--text);
+    overflow-wrap: anywhere;
+  }
+
+  @media (max-width: 560px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* ---------- section headings ---------- */
+
+  section.block { margin-bottom: 56px; }
+
+  section.block > h2 {
+    font-size: 1.35rem;
+    font-weight: 600;
+    margin: 0 0 6px;
+  }
+
+  section.block > p.sub {
+    margin: 0 0 28px;
+    color: var(--text-dim);
+    max-width: 62ch;
+  }
+
+  /* ---------- ledger (resolved timeline) ---------- */
+
+  ol.ledger {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0 28px;
+    border-left: 2px solid var(--hairline);
+    counter-reset: entry;
+  }
+
+  ol.ledger li {
+    position: relative;
+    counter-increment: entry;
+    padding-bottom: 32px;
+  }
+
+  ol.ledger li:last-child { padding-bottom: 0; }
+
+  ol.ledger li::before {
+    content: counter(entry, decimal-leading-zero);
+    position: absolute;
+    left: -28px;
+    top: 2px;
+    transform: translateX(-50%);
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--ink-raised);
+    border: 1px solid var(--brass);
+    color: var(--brass);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .entry-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+
+  .entry-head h3 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .tag {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    border: 1px solid var(--hairline);
+    border-radius: 4px;
+    padding: 2px 7px;
+    line-height: 1.4;
+  }
+
+  .tag.blocked {
+    color: var(--rust);
+    border-color: rgba(201, 122, 74, 0.5);
+    background: var(--rust-soft);
+  }
+
+  ol.ledger li p {
+    margin: 0 0 8px;
+    max-width: 64ch;
+  }
+
+  .touched {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--text-dim);
+  }
+
+  .touched code {
+    font-family: var(--font-mono);
+    background: var(--ink-raised);
+    border: 1px solid var(--hairline);
+    border-radius: 4px;
+    padding: 1px 6px;
+    color: var(--text);
+  }
+
+  /* ---------- open items ---------- */
+
+  .open-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  @media (max-width: 600px) {
+    .open-grid { grid-template-columns: 1fr; }
+  }
+
+  .open-card {
+    border: 1px dashed var(--hairline);
+    border-radius: 8px;
+    padding: 18px 18px 20px;
+    background: var(--ink-raised-2);
+  }
+
+  .open-card h3 {
+    margin: 0 0 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .open-card p {
+    margin: 0;
+    color: var(--text-dim);
+    font-size: 0.95rem;
+  }
+
+  /* ---------- reference grid ---------- */
+
+  .ref-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  @media (max-width: 680px) {
+    .ref-grid { grid-template-columns: 1fr; }
+  }
+
+  .ref-panel {
+    border: 1px solid var(--hairline);
+    border-radius: 8px;
+    padding: 18px;
+    background: var(--ink-raised);
+  }
+
+  .ref-panel h3 {
+    margin: 0 0 12px;
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  .ref-panel ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .ref-panel li {
+    padding: 9px 0;
+    border-top: 1px solid var(--hairline);
+    font-size: 0.9rem;
+  }
+
+  .ref-panel li:first-child { border-top: none; padding-top: 0; }
+
+  .ref-panel li strong {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+
+  .ref-panel li span {
+    color: var(--text-dim);
+  }
+
+  .ref-panel li code {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--text-dim);
+  }
+
+  /* ---------- footer ---------- */
+
+  footer {
+    border-top: 1px solid var(--hairline);
+    padding-top: 24px;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+  }
+
+  footer code { font-family: var(--font-mono); color: var(--text-dim); }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page-head">
+    <h1>Project Setup Log</h1>
+    <p class="lede">School-TL-TelegramBot — a running record of the decisions made while scaffolding this repository, and the ones still open. Entries are added as they happen; nothing here gets rewritten after the fact.</p>
+
+    <div class="stats">
+      <div class="stat"><p class="label">Repository</p><p class="value">dotolus/School-TL-TelegramBot</p></div>
+      <div class="stat"><p class="label">Default branch</p><p class="value">main</p></div>
+      <div class="stat"><p class="label">Visibility</p><p class="value">Private</p></div>
+      <div class="stat"><p class="label">Skills logged</p><p class="value">4</p></div>
+      <div class="stat"><p class="label">MCP servers</p><p class="value">1</p></div>
+      <div class="stat"><p class="label">Open items</p><p class="value">4</p></div>
+    </div>
+  </header>
+
+  <section class="block" aria-labelledby="resolved-h">
+    <h2 id="resolved-h">Resolved</h2>
+    <p class="sub">What's already decided and in place, in the order it happened.</p>
+
+    <ol class="ledger">
+      <li>
+        <div class="entry-head"><h3>Wrote the starting CLAUDE.md</h3><span class="tag">rule</span></div>
+        <p>Documented that the project is empty and the tech stack isn't chosen yet, so a future session doesn't guess at a stack nobody picked.</p>
+        <p class="touched">touched: <code>CLAUDE.md</code></p>
+      </li>
+      <li>
+        <div class="entry-head"><h3>Added a lint check before every commit</h3><span class="tag">hook</span></div>
+        <p>A <code>PreToolUse</code> hook watches for <code>git commit</code> and looks for a linter — npm, Make, ruff, flake8, or golangci-lint. None exists yet, so it warns and lets the commit through. It'll start blocking failed runs the moment a linter is configured.</p>
+        <p class="touched">touched: <code>.claude/settings.json</code></p>
+      </li>
+      <li>
+        <div class="entry-head"><h3>Set a commit message rule</h3><span class="tag">rule</span></div>
+        <p>Every commit has to say why the change matters and what it does — business context and technical detail, not just one of the two.</p>
+        <p class="touched">touched: <code>CLAUDE.md</code></p>
+      </li>
+      <li>
+        <div class="entry-head"><h3>Started devops-guidelines.md</h3><span class="tag">rule</span></div>
+        <p>A dedicated place for branch policy, CI, deployments, and infrastructure decisions — kept current by a standing rule instead of written once and forgotten.</p>
+        <p class="touched">touched: <code>devops-guidelines.md</code>, <code>CLAUDE.md</code></p>
+      </li>
+      <li>
+        <div class="entry-head"><h3>Initialized the repository</h3><span class="tag">git</span></div>
+        <p>Ran <code>git init</code> and renamed the default branch from <code>master</code> to <code>main</code>, ahead of the branch-protection work below.</p>
+        <p class="touched">touched: <code>git init</code></p>
+      </li>
+      <li>
+        <div class="entry-head"><h3>Excluded local-only and cached files</h3><span class="tag">git</span></div>
+        <p>Local settings and synced skill/plugin data don't belong in version control, so they're kept out from the start rather than cleaned up later.</p>
+        <p class="touched">touched: <code>.gitignore</code></p>
+      </li>
+      <li>
+        <div class="entry-head"><h3>Connected the GitHub remote</h3><span class="tag">git</span></div>
+        <p>Pointed <code>origin</code> at <code>github.com/dotolus/School-TL-TelegramBot</code>, merged its existing <code>README.md</code> with the local scaffold — unrelated histories — and pushed <code>main</code>.</p>
+        <p class="touched">touched: <code>git remote add</code>, <code>git merge --allow-unrelated-histories</code></p>
+      </li>
+      <li>
+        <div class="entry-head"><h3>Tried to protect main</h3><span class="tag blocked">blocked</span></div>
+        <p>GitHub refused the branch-protection rule: a private repo on the free plan needs GitHub Pro or public visibility first. The rule to apply once that's unblocked is already decided — see Open below.</p>
+        <p class="touched">touched: <code>devops-guidelines.md</code></p>
+      </li>
+      <li>
+        <div class="entry-head"><h3>Installed the superpowers skill</h3><span class="tag">skill</span></div>
+        <p>Added the <code>superpowers-dev</code> marketplace from <code>github.com/obra/superpowers</code> and installed its skill library for TDD, debugging, and collaboration patterns.</p>
+        <p class="touched">touched: <code>superpowers@superpowers-dev</code></p>
+      </li>
+      <li>
+        <div class="entry-head"><h3>Started an available-skills ledger</h3><span class="tag">skill</span></div>
+        <p><code>user-available-skills.md</code> records every skill this project has used. Entries only get added, never removed — even after a skill stops being used.</p>
+        <p class="touched">touched: <code>user-available-skills.md</code></p>
+      </li>
+    </ol>
+  </section>
+
+  <section class="block" aria-labelledby="open-h">
+    <h2 id="open-h">Open — needs a decision</h2>
+    <p class="sub">Nothing here blocks day-to-day work; each one just needs a call made before it can close.</p>
+
+    <div class="open-grid">
+      <div class="open-card">
+        <h3>Protect the main branch <span class="tag blocked">blocked</span></h3>
+        <p>GitHub won't apply branch protection to a private repo on the free plan. Needs either a GitHub Pro upgrade or making the repo public. The rule itself is already decided: no required reviews, admin can bypass, no required status checks until CI exists.</p>
+      </div>
+      <div class="open-card">
+        <h3>Pick the tech stack</h3>
+        <p>Nothing is chosen yet — language, framework, dependencies. Until it is, the lint hook has nothing to detect, and most of this project is still a plan.</p>
+      </div>
+      <div class="open-card">
+        <h3>Add a CI workflow</h3>
+        <p>Depends on the stack decision. Once a test suite exists, add a GitHub Actions workflow that runs it on every push, then require it to pass before merging into main.</p>
+      </div>
+      <div class="open-card">
+        <h3>Revisit PR review rules</h3>
+        <p>Zero approvals are required right now, because GitHub won't let you approve your own pull request. Add a required-approval count once a second collaborator joins.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" aria-labelledby="ref-h">
+    <h2 id="ref-h">Current state</h2>
+    <p class="sub">What's active right now, without reading the history above.</p>
+
+    <div class="ref-grid">
+      <div class="ref-panel">
+        <h3>Skills</h3>
+        <ul>
+          <li><strong>superpowers</strong><span>TDD, debugging, collaboration patterns</span></li>
+          <li><strong>ponytail</strong><span>Smallest change that solves the task</span></li>
+          <li><strong>ui-ux-pro-max</strong><span>Design-system guidance — used for this page</span></li>
+          <li><strong>frontend-design</strong><span>Distinct visual identity — used for this page</span></li>
+        </ul>
+      </div>
+      <div class="ref-panel">
+        <h3>MCP servers</h3>
+        <ul>
+          <li><strong>codebase-memory-mcp</strong><span>Defined in <code>.mcp.json</code>, enabled for this project</span></li>
+        </ul>
+      </div>
+      <div class="ref-panel">
+        <h3>Rules &amp; hooks</h3>
+        <ul>
+          <li><strong>Lint before commit</strong><span>Hook on <code>git commit</code></span></li>
+          <li><strong>Commit messages</strong><span>Business + technical, every time</span></li>
+          <li><strong>DevOps guidelines</strong><span>Kept current as requirements land</span></li>
+          <li><strong>Skills ledger</strong><span>Append-only, never trimmed</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>Generated 2026-10-29 for School-TL-TelegramBot. Planned and styled with the <code>ui-ux-pro-max</code> and <code>frontend-design</code> skills.</p>
+  </footer>
+
+</div>
+</body>
+</html>

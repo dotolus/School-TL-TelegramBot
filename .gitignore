@@ -1,3 +1,6 @@
 .claude/settings.local.json
 .claude/skills/
 .agents/
+.venv-bot/
+__pycache__/
+.superpowers/sdd/

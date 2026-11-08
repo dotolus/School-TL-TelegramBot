@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from bot.claude_assistant import ClassificationResult, classify_message
+from bot.claude_assistant import ClassificationResult, answer_query, classify_message
 
 
 def make_fake_client(tool_name, tool_input):
@@ -46,3 +46,33 @@ async def test_classify_message_returns_decline_edit_for_an_edit_request():
     client = make_fake_client(tool_name="decline_edit_request", tool_input={})
     result = await classify_message(client, "claude-sonnet-5-5", "תזיז את המבחן לדצמבר", date(2026, 11, 8))
     assert result == ClassificationResult(kind="decline_edit")
+
+
+def make_fake_text_client(text):
+    client = Mock()
+    client.messages.create = AsyncMock(
+        return_value=types.SimpleNamespace(content=[types.SimpleNamespace(type="text", text=text)])
+    )
+    return client
+
+
+@pytest.mark.asyncio
+async def test_answer_query_returns_claude_text_response():
+    client = make_fake_text_client("יש מבחן במתמטיקה ביום שני.")
+    answer = await answer_query(
+        client,
+        "claude-sonnet-5-5",
+        "מה יש השבוע?",
+        [{"title": "מבחן במתמטיקה", "short": "יום שני, 16.11"}],
+        date(2026, 11, 8),
+    )
+    assert answer == "יש מבחן במתמטיקה ביום שני."
+
+
+@pytest.mark.asyncio
+async def test_answer_query_handles_empty_timeline():
+    client = make_fake_text_client("אין כרגע פריטים בציר הזמן.")
+    answer = await answer_query(client, "claude-sonnet-5-5", "מה יש השבוע?", [], date(2026, 11, 8))
+    assert answer == "אין כרגע פריטים בציר הזמן."
+    call_kwargs = client.messages.create.call_args.kwargs
+    assert "[]" in call_kwargs["messages"][0]["content"]  # empty list was actually passed through, not skipped

@@ -1,3 +1,4 @@
+import json
 from dataclasses import dataclass
 from datetime import date
 from typing import Literal
@@ -78,3 +79,29 @@ async def classify_message(
     if tool_use.name == "propose_new_item":
         return ClassificationResult(kind="propose_new_item", item=tool_use.input)
     return ClassificationResult(kind="decline_edit")
+
+
+def _answer_system_prompt(today: date) -> str:
+    return (
+        f"Today's date is {today.isoformat()}. Answer the user's Hebrew question about "
+        "their school class timeline, in Hebrew, using only the given items. Read exact "
+        "dates out of each item's short/full text where the question needs one. If "
+        "nothing in the items matches the question, say so plainly rather than guessing."
+    )
+
+
+async def answer_query(
+    client: anthropic.AsyncAnthropic,
+    model: str,
+    question: str,
+    items: list[dict],
+    today: date,
+) -> str:
+    items_json = json.dumps(items, ensure_ascii=False)
+    response = await client.messages.create(
+        model=model,
+        max_tokens=1024,
+        system=_answer_system_prompt(today),
+        messages=[{"role": "user", "content": f"{question}\n\nItems (JSON): {items_json}"}],
+    )
+    return response.content[0].text
